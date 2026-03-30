@@ -1,22 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'signup_screen.dart';
+import '../../services/auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class SignupScreen extends StatefulWidget {
+  const SignupScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<SignupScreen> createState() => _SignupScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _SignupScreenState extends State<SignupScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
+  final AuthService _authService = AuthService();
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -33,30 +37,30 @@ class _LoginScreenState extends State<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const Icon(
-                  Icons.eco, // Leaf icon
-                  size: 80,
+                  Icons.spa, // Leaf/farm style icon
+                  size: 64,
                   color: Color(0xFF2E7D32),
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'FarmTrack',
+                  'Create Account',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.poppins(
-                    fontSize: 32,
+                    fontSize: 28,
                     fontWeight: FontWeight.bold,
-                    color: const Color(0xFF1B5E20), // Dark green
+                    color: const Color(0xFF1B5E20),
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Fresh from farms to your home',
+                  'Join FarmTrack today',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.poppins(
                     fontSize: 16,
                     color: Colors.grey.shade700,
                   ),
                 ),
-                const SizedBox(height: 48),
+                const SizedBox(height: 40),
                 _buildTextField(
                   controller: _emailController,
                   label: 'Email',
@@ -70,13 +74,41 @@ class _LoginScreenState extends State<LoginScreen> {
                   icon: Icons.lock_outline,
                   obscureText: true,
                 ),
+                const SizedBox(height: 16),
+                _buildTextField(
+                  controller: _confirmPasswordController,
+                  label: 'Confirm Password',
+                  icon: Icons.lock_outline,
+                  obscureText: true,
+                ),
                 const SizedBox(height: 32),
                 ElevatedButton(
-                  onPressed: () {
-                    // TODO: Implement login logic
+                  onPressed: () async {
+                    if (_emailController.text.isEmpty || 
+                        _passwordController.text.isEmpty || 
+                        _confirmPasswordController.text.isEmpty) {
+                      print('Please fill all fields');
+                      return;
+                    }
+
+                    if (_passwordController.text != _confirmPasswordController.text) {
+                      print('Passwords do not match');
+                      return;
+                    }
+                    
+                    User? user = await _authService.signUp(
+                      _emailController.text,
+                      _passwordController.text,
+                    );
+                    
+                    if (user != null) {
+                      print('Sign Up Successful');
+                    } else {
+                      print('Sign Up Failed');
+                    }
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2E7D32), // Green button
+                    backgroundColor: const Color(0xFF2E7D32),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     elevation: 4,
@@ -86,7 +118,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   child: Text(
-                    'Login',
+                    'Sign Up',
                     style: GoogleFonts.poppins(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -98,22 +130,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      "Don't have an account?",
+                      'Already have an account?',
                       style: GoogleFonts.poppins(
                         color: Colors.grey.shade700,
                       ),
                     ),
                     TextButton(
                       onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const SignupScreen(),
-                          ),
-                        );
+                        Navigator.pop(context);
                       },
                       child: Text(
-                        'Sign up',
+                        'Login',
                         style: GoogleFonts.poppins(
                           color: const Color(0xFF2E7D32),
                           fontWeight: FontWeight.bold,

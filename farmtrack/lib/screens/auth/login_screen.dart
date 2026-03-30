@@ -1,23 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'signup_screen.dart';
+import '../../services/auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-class SignupScreen extends StatefulWidget {
-  const SignupScreen({super.key});
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
 
   @override
-  State<SignupScreen> createState() => _SignupScreenState();
+  State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _SignupScreenState extends State<SignupScreen> {
+class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final AuthService _authService = AuthService();
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
-    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -34,30 +36,30 @@ class _SignupScreenState extends State<SignupScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const Icon(
-                  Icons.spa, // Leaf/farm style icon
-                  size: 64,
+                  Icons.eco, // Leaf icon
+                  size: 80,
                   color: Color(0xFF2E7D32),
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Create Account',
+                  'FarmTrack',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.poppins(
-                    fontSize: 28,
+                    fontSize: 32,
                     fontWeight: FontWeight.bold,
-                    color: const Color(0xFF1B5E20),
+                    color: const Color(0xFF1B5E20), // Dark green
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Join FarmTrack today',
+                  'Fresh from farms to your home',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.poppins(
                     fontSize: 16,
                     color: Colors.grey.shade700,
                   ),
                 ),
-                const SizedBox(height: 40),
+                const SizedBox(height: 48),
                 _buildTextField(
                   controller: _emailController,
                   label: 'Email',
@@ -71,20 +73,27 @@ class _SignupScreenState extends State<SignupScreen> {
                   icon: Icons.lock_outline,
                   obscureText: true,
                 ),
-                const SizedBox(height: 16),
-                _buildTextField(
-                  controller: _confirmPasswordController,
-                  label: 'Confirm Password',
-                  icon: Icons.lock_outline,
-                  obscureText: true,
-                ),
                 const SizedBox(height: 32),
                 ElevatedButton(
-                  onPressed: () {
-                    // TODO: Implement signup logic
+                  onPressed: () async {
+                    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+                      print('Please fill all fields');
+                      return;
+                    }
+                    
+                    User? user = await _authService.signIn(
+                      _emailController.text,
+                      _passwordController.text,
+                    );
+                    
+                    if (user != null) {
+                      print('Login Successful');
+                    } else {
+                      print('Login Failed');
+                    }
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2E7D32),
+                    backgroundColor: const Color(0xFF2E7D32), // Green button
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     elevation: 4,
@@ -94,7 +103,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                   ),
                   child: Text(
-                    'Sign Up',
+                    'Login',
                     style: GoogleFonts.poppins(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -106,17 +115,22 @@ class _SignupScreenState extends State<SignupScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      'Already have an account?',
+                      "Don't have an account?",
                       style: GoogleFonts.poppins(
                         color: Colors.grey.shade700,
                       ),
                     ),
                     TextButton(
                       onPressed: () {
-                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const SignupScreen(),
+                          ),
+                        );
                       },
                       child: Text(
-                        'Login',
+                        'Sign up',
                         style: GoogleFonts.poppins(
                           color: const Color(0xFF2E7D32),
                           fontWeight: FontWeight.bold,
