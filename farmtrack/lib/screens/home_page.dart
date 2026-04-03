@@ -5,6 +5,8 @@ import '../widgets/search_bar_widget.dart';
 import '../widgets/promo_banner.dart';
 import '../widgets/category_card.dart';
 import '../widgets/product_card.dart';
+import 'package:provider/provider.dart';
+import '../services/cart_service.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -153,6 +155,12 @@ class HomePage extends StatelessWidget {
                     price: prod['price'],
                     imageUrl: prod['image'],
                     onAdd: () {
+                      context.read<CartService>().addToCart(
+                        name: prod['name'],
+                        quantityStr: prod['quantity'],
+                        price: prod['price'],
+                        imageUrl: prod['image'],
+                      );
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text('${prod['name']} added to cart!'),
