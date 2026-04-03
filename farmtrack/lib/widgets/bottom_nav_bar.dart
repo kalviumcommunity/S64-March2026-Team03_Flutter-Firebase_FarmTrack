@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../utils/constants.dart';
+import '../services/cart_service.dart';
 
 class AppBottomNavBar extends StatelessWidget {
   final int currentIndex;
@@ -13,6 +15,10 @@ class AppBottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cartItemCount = context.watch<CartService>().items.fold<int>(
+      0, (sum, item) => sum + item.quantity
+    );
+
     return Container(
       decoration: BoxDecoration(
         boxShadow: [
@@ -33,23 +39,35 @@ class AppBottomNavBar extends StatelessWidget {
         showUnselectedLabels: true,
         selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
         unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
-        items: const [
-          BottomNavigationBarItem(
+        items: [
+          const BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),
             activeIcon: Icon(Icons.home),
             label: 'Home',
           ),
-          BottomNavigationBarItem(
+          const BottomNavigationBarItem(
             icon: Icon(Icons.grid_view_outlined),
             activeIcon: Icon(Icons.grid_view),
             label: 'Categories',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart_outlined),
-            activeIcon: Icon(Icons.shopping_cart),
+            icon: Badge(
+              isLabelVisible: cartItemCount > 0,
+              label: Text(cartItemCount.toString()),
+              backgroundColor: AppColors.alertRed,
+              textColor: Colors.white,
+              child: const Icon(Icons.shopping_cart_outlined),
+            ),
+            activeIcon: Badge(
+              isLabelVisible: cartItemCount > 0,
+              label: Text(cartItemCount.toString()),
+              backgroundColor: AppColors.categoryBgRed,
+              textColor: Colors.white,
+              child: const Icon(Icons.shopping_cart),
+            ),
             label: 'Cart',
           ),
-          BottomNavigationBarItem(
+          const BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
             activeIcon: Icon(Icons.person),
             label: 'Profile',
