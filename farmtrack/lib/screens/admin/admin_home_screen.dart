@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/firestore_service.dart';
+import 'admin_order_details_screen.dart';
 
 class AdminHomeScreen extends StatefulWidget {
   const AdminHomeScreen({super.key});
@@ -362,9 +363,11 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               const SizedBox(width: 8),
               ElevatedButton(
                 onPressed: () {
-                  // Admin Detail Screen navigation implementation placeholder
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Order Detail for ${order['id']} coming soon!')),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AdminOrderDetailScreen(order: order),
+                    ),
                   );
                 },
                 style: ElevatedButton.styleFrom(
