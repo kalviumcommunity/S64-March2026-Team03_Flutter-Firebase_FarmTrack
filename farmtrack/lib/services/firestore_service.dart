@@ -60,4 +60,42 @@ class FirestoreService {
       throw Exception('Failed to update order status.');
     }
   }
+
+  // --- USER PROFILE METHODS --- //
+  
+  final String _usersCollection = 'users';
+
+  /// Saves or updates user profile data in Firestore.
+  Future<void> saveUser(String uid, Map<String, dynamic> userData) async {
+    try {
+      if (!userData.containsKey('createdAt')) {
+        userData['createdAt'] = FieldValue.serverTimestamp();
+      }
+      await _db.collection(_usersCollection).doc(uid).set(
+        userData, 
+        SetOptions(merge: true)
+      );
+    } catch (e) {
+      print('Error in saveUser: $e');
+      throw Exception('Failed to save user data.');
+    }
+  }
+
+  /// Gets a user profile by phone number
+  Future<Map<String, dynamic>?> getUserByPhone(String phone) async {
+    try {
+      var query = await _db.collection(_usersCollection)
+          .where('phone', isEqualTo: phone)
+          .limit(1)
+          .get();
+      
+      if (query.docs.isNotEmpty) {
+        return query.docs.first.data();
+      }
+      return null;
+    } catch (e) {
+      print('Error in getUserByPhone: $e');
+      return null;
+    }
+  }
 }
