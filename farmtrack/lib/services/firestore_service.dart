@@ -65,6 +65,16 @@ class FirestoreService {
   
   final String _usersCollection = 'users';
 
+  /// Gets a real-time stream of all registered users.
+  Stream<QuerySnapshot<Map<String, dynamic>>> getUsers() {
+    try {
+      return _db.collection(_usersCollection).snapshots();
+    } catch (e) {
+      print('Error in getUsers: $e');
+      throw Exception('Failed to fetch users stream.');
+    }
+  }
+
   /// Saves or updates user profile data in Firestore.
   Future<void> saveUser(String uid, Map<String, dynamic> userData) async {
     try {

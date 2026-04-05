@@ -1,92 +1,135 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../services/firestore_service.dart';
 
-class AdminHomeScreen extends StatelessWidget {
+class AdminHomeScreen extends StatefulWidget {
   const AdminHomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // Dummy Data for Orders
-    final List<Map<String, dynamic>> dummyOrders = [
-      {
-        'id': 'FT-2024-001',
-        'email': 'farm_lover@gmail.com',
-        'total': 45.50,
-        'status': 'Placed',
-        'color': Colors.amber.shade700,
-      },
-      {
-        'id': 'FT-2024-002',
-        'email': 'healthy.living@me.com',
-        'total': 120.00,
-        'status': 'Packed',
-        'color': Colors.blue.shade700,
-      },
-      {
-        'id': 'FT-2024-003',
-        'email': 'green.earth@outlook.com',
-        'total': 22.15,
-        'status': 'Shipping',
-        'color': Colors.orange.shade800,
-      },
-      {
-        'id': 'FT-2024-004',
-        'email': 'nature.fan@company.com',
-        'total': 89.99,
-        'status': 'Delivered',
-        'color': const Color(0xFF2E7D32),
-      },
-    ];
+  State<AdminHomeScreen> createState() => _AdminHomeScreenState();
+}
 
+class _AdminHomeScreenState extends State<AdminHomeScreen> {
+  final FirestoreService _firestoreService = FirestoreService();
+
+  // Helper method to get color for status
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'placed':
+        return Colors.amber.shade700;
+      case 'packed':
+        return Colors.blue.shade700;
+      case 'out_for_delivery':
+        return Colors.orange.shade800;
+      case 'delivered':
+        return const Color(0xFF2E7D32);
+      default:
+        return Colors.grey;
+    }
+  }
+
+  // Helper method to get icon for status
+  IconData _getStatusIcon(String status) {
+    switch (status.toLowerCase()) {
+      case 'placed':
+        return Icons.shopping_basket_outlined;
+      case 'packed':
+        return Icons.inventory_2_outlined;
+      case 'out_for_delivery':
+        return Icons.local_shipping_outlined;
+      case 'delivered':
+        return Icons.task_alt;
+      default:
+        return Icons.help_outline;
+    }
+  }
+
+  // Support for status labels formatting
+  String _getStatusLabel(String status) {
+    return status.replaceAll('_', ' ').toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FBF9), // Light greenish background
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 1. Header Section with Greeting
-            _buildGreetingHeader(context),
-            
-            // 2. Stats Section
-            _buildStatsSection(),
-            
-            // 3. Orders Section Title
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+      backgroundColor: const Color(0xFFF9FBF9),
+      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: _firestoreService.getOrders(),
+        builder: (context, snapshot) {
+          // Handle Loading State
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(color: Color(0xFF2E7D32)),
+            );
+          }
+
+          // Handle Error State
+          if (snapshot.hasError) {
+            return Center(
               child: Text(
-                'Recent Orders',
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF2C3E50),
-                ),
+                'Error: ${snapshot.error}',
+                style: GoogleFonts.poppins(color: Colors.red),
               ),
+            );
+          }
+
+          final orders = snapshot.data?.docs ?? [];
+
+          return SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 1. Header Section with Greeting & Real Counts
+                _buildGreetingHeader(context, orders),
+                
+                // 2. Stats Section based on REAL data
+                _buildStatsSection(orders),
+                
+                // 3. Orders Section Title
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+                  child: Text(
+                    'Recent Orders',
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF2C3E50),
+                    ),
+                  ),
+                ),
+                
+                // 4. Real Order List or Empty State
+                orders.isEmpty 
+                  ? _buildEmptyState()
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
+                      itemCount: orders.length,
+                      itemBuilder: (context, index) {
+                        final orderDoc = orders[index];
+                        final orderData = orderDoc.data();
+                        orderData['id'] = orderDoc.id; // Inject ID for the card
+                        return _buildOrderCard(context, orderData);
+                      },
+                    ),
+                
+                const SizedBox(height: 30),
+              ],
             ),
-            
-            // 4. Order List
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
-              itemCount: dummyOrders.length,
-              itemBuilder: (context, index) {
-                return _buildOrderCard(context, dummyOrders[index]);
-              },
-            ),
-            
-            const SizedBox(height: 30),
-          ],
-        ),
+          );
+        }
       ),
     );
   }
 
-  Widget _buildGreetingHeader(BuildContext context) {
+  Widget _buildGreetingHeader(BuildContext context, List<QueryDocumentSnapshot> orders) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(24, 60, 24, 40),
       decoration: const BoxDecoration(
-        color: Color(0xFFE8F5E9), // Light green background
+        color: Color(0xFFE8F5E9),
         borderRadius: BorderRadius.only(
           bottomLeft: Radius.circular(35),
           bottomRight: Radius.circular(35),
@@ -118,7 +161,7 @@ class AdminHomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Manage your orders efficiently',
+            'Total ${orders.length} orders tracked in real-time',
             style: GoogleFonts.poppins(
               fontSize: 14,
               color: const Color(0xFF2E7D32).withOpacity(0.8),
@@ -130,18 +173,21 @@ class AdminHomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatsSection() {
+  Widget _buildStatsSection(List<QueryDocumentSnapshot> orders) {
+    int delivered = orders.where((doc) => (doc.data() as Map)['status'] == 'delivered').length;
+    int pending = orders.length - delivered;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Transform.translate(
         offset: const Offset(0, -25),
         child: Row(
           children: [
-            Expanded(child: _buildStatCard('Total', '24', Icons.format_list_bulleted, const Color(0xFF1B5E20))),
+            Expanded(child: _buildStatCard('Total', orders.length.toString(), Icons.format_list_bulleted, const Color(0xFF1B5E20))),
             const SizedBox(width: 12),
-            Expanded(child: _buildStatCard('Delivered', '18', Icons.check_circle_outline, const Color(0xFF2E7D32))),
+            Expanded(child: _buildStatCard('Delivered', delivered.toString(), Icons.check_circle_outline, const Color(0xFF2E7D32))),
             const SizedBox(width: 12),
-            Expanded(child: _buildStatCard('Pending', '6', Icons.query_builder, Colors.orange.shade800)),
+            Expanded(child: _buildStatCard('Pending', pending.toString(), Icons.query_builder, Colors.orange.shade800)),
           ],
         ),
       ),
@@ -187,7 +233,36 @@ class AdminHomeScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.only(top: 100),
+        child: Column(
+          children: [
+            Icon(Icons.inbox_outlined, size: 80, color: Colors.grey.shade300),
+            const SizedBox(height: 16),
+            Text(
+              'No orders received yet.',
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                color: Colors.grey.shade500,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildOrderCard(BuildContext context, Map<String, dynamic> order) {
+    final status = order['status'] ?? 'placed';
+    final statusColor = _getStatusColor(status);
+    final statusIcon = _getStatusIcon(status);
+    
+    // Attempt to get email, fallback to userId if missing
+    final userLabel = order['email'] ?? order['userId'] ?? 'Unknown User';
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(18),
@@ -208,40 +283,52 @@ class AdminHomeScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    order['id'],
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                      color: const Color(0xFF2C3E50),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      order['id'],
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: const Color(0xFF2C3E50),
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    order['email'],
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      color: Colors.grey.shade500,
+                    const SizedBox(height: 2),
+                    Text(
+                      userLabel,
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: Colors.grey.shade500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: order['color'].withOpacity(0.1),
+                  color: statusColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Text(
-                  order['status'].toUpperCase(),
-                  style: GoogleFonts.poppins(
-                    color: order['color'],
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(statusIcon, size: 12, color: statusColor),
+                    const SizedBox(width: 4),
+                    Text(
+                      _getStatusLabel(status),
+                      style: GoogleFonts.poppins(
+                        color: statusColor,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -262,7 +349,7 @@ class AdminHomeScreen extends StatelessWidget {
                       style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey.shade400),
                     ),
                     Text(
-                      '₹ ${order['total'].toStringAsFixed(2)}',
+                      '₹ ${(order['totalPrice'] ?? 0.0).toStringAsFixed(2)}',
                       style: GoogleFonts.poppins(
                         fontWeight: FontWeight.bold,
                         fontSize: 18,
@@ -274,7 +361,12 @@ class AdminHomeScreen extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               ElevatedButton(
-                onPressed: () {},
+                onPressed: () {
+                  // Admin Detail Screen navigation implementation placeholder
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Order Detail for ${order['id']} coming soon!')),
+                  );
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFE8F5E9),
                   foregroundColor: const Color(0xFF1B5E20),

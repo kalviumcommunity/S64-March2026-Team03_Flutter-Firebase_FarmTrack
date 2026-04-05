@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/auth_service.dart';
+import '../../services/firestore_service.dart';
 import 'admin_home_screen.dart';
 
 class AdminMainScreen extends StatelessWidget {
@@ -9,144 +11,168 @@ class AdminMainScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AuthService authService = AuthService();
+    final FirestoreService firestoreService = FirestoreService();
     final double horizontalPadding = 24.0;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF1F4F1),
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
-        slivers: [
-          // 1. Sleek Background Header as a Sliver
-          SliverToBoxAdapter(
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                // Top Green Background
-                Container(
-                  height: 250, // Fixed height for header area
-                  width: double.infinity,
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Color(0xFF1B5E20), Color(0xFF43A047)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: firestoreService.getOrders(),
+        builder: (context, orderSnapshot) {
+          // Calculate dynamic metrics from orders
+          final orders = orderSnapshot.data?.docs ?? [];
+          double totalRevenue = 0;
+          int alerts = 0;
+
+          for (var doc in orders) {
+            final data = doc.data();
+            totalRevenue += (data['totalPrice'] ?? 0.0);
+            if (data['status'] == 'placed' || data['status'] == 'packed') {
+              alerts++;
+            }
+          }
+
+          // Format revenue for display
+          String revenueDisplay = totalRevenue >= 1000 
+              ? '₹ ${(totalRevenue / 1000).toStringAsFixed(1)}k' 
+              : '₹ ${totalRevenue.toStringAsFixed(0)}';
+
+          return CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              // 1. Sleek Background Header
+              SliverToBoxAdapter(
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      height: 250,
+                      width: double.infinity,
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Color(0xFF1B5E20), Color(0xFF43A047)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.only(
+                          bottomLeft: Radius.circular(50),
+                          bottomRight: Radius.circular(50),
+                        ),
+                      ),
                     ),
-                    borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(50),
-                      bottomRight: Radius.circular(50),
-                    ),
-                  ),
-                ),
-                
-                // Content inside the Header
-                SafeArea(
-                  bottom: false,
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    SafeArea(
+                      bottom: false,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            const SizedBox(height: 16),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                  'Control Center',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 26,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                    letterSpacing: -0.5,
-                                  ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Control Center',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 26,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                        letterSpacing: -0.5,
+                                      ),
+                                    ),
+                                    Text(
+                                      'FarmTrack Administrator',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 14,
+                                        color: Colors.white.withOpacity(0.7),
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                Text(
-                                  'FarmTrack Administrator',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 14,
-                                    color: Colors.white.withOpacity(0.7),
-                                    fontWeight: FontWeight.w500,
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white24,
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: IconButton(
+                                    icon: const Icon(Icons.power_settings_new, color: Colors.white),
+                                    onPressed: () async {
+                                      final confirm = await showDialog<bool>(
+                                        context: context,
+                                        builder: (context) => AlertDialog(
+                                          title: const Text('Sign Out'),
+                                          content: const Text('Close admin session?'),
+                                          actions: [
+                                            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                                            TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Confirm')),
+                                          ],
+                                        ),
+                                      );
+                                      if (confirm == true) await authService.signOut();
+                                    },
                                   ),
                                 ),
                               ],
                             ),
-                            Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white24,
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: IconButton(
-                                icon: const Icon(Icons.power_settings_new, color: Colors.white),
-                                onPressed: () async {
-                                  final confirm = await showDialog<bool>(
-                                    context: context,
-                                    builder: (context) => AlertDialog(
-                                      title: const Text('Sign Out'),
-                                      content: const Text('Close admin session?'),
-                                      actions: [
-                                        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-                                        TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Confirm')),
-                                      ],
-                                    ),
-                                  );
-                                  if (confirm == true) await authService.signOut();
-                                },
-                              ),
+                            const SizedBox(height: 32),
+                            // The Card partially overlapping the bottom
+                            StreamBuilder<QuerySnapshot>(
+                              stream: firestoreService.getUsers(),
+                              builder: (context, userSnapshot) {
+                                final userCount = userSnapshot.data?.docs.length ?? 0;
+                                return _buildInsightsCard(revenueDisplay, userCount, alerts);
+                              }
                             ),
                           ],
                         ),
-                        const SizedBox(height: 32),
-                        // The Card partially overlapping the bottom
-                        _buildInsightsCard(),
-                      ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 110)),
+
+              SliverPadding(
+                padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                sliver: SliverToBoxAdapter(
+                  child: Text(
+                    'Operational Tools',
+                    style: GoogleFonts.poppins(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF2C3E50),
                     ),
                   ),
                 ),
-              ],
-            ),
-          ),
+              ),
 
-          // 2. Clear spacing to avoid overlap with the green curve
-          const SliverToBoxAdapter(child: SizedBox(height: 110)), // Significant height to move title out of curve area
-
-          // 3. Operational Tools Title
-          SliverPadding(
-            padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-            sliver: SliverToBoxAdapter(
-              child: Text(
-                'Operational Tools',
-                style: GoogleFonts.poppins(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF2C3E50), // Contrasting dark text
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(horizontalPadding, 20, horizontalPadding, 40),
+                sliver: SliverGrid(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    childAspectRatio: 0.95,
+                  ),
+                  delegate: SliverChildListDelegate([
+                    _buildEnhancedToolCard(context, 'Orders', Icons.shopping_cart_checkout_rounded, const Color(0xFF4CAF50)),
+                    _buildEnhancedToolCard(context, 'Analytics', Icons.analytics_rounded, const Color(0xFF2196F3)),
+                    _buildEnhancedToolCard(context, 'Customers', Icons.groups_rounded, const Color(0xFF9C27B0)),
+                    _buildEnhancedToolCard(context, 'Inventory', Icons.warehouse_rounded, const Color(0xFFFF9800)),
+                    _buildEnhancedToolCard(context, 'Live Stats', Icons.sensors_rounded, const Color(0xFF607D8B)),
+                    _buildEnhancedToolCard(context, 'Support', Icons.help_center_rounded, const Color(0xFFE91E63)),
+                  ]),
                 ),
               ),
-            ),
-          ),
-
-          // 4. Grid of Tools
-          SliverPadding(
-            padding: EdgeInsets.fromLTRB(horizontalPadding, 20, horizontalPadding, 40),
-            sliver: SliverGrid(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                childAspectRatio: 0.95, // Ensuring labels aren't cut off
-              ),
-              delegate: SliverChildListDelegate([
-                _buildEnhancedToolCard(context, 'Orders', Icons.shopping_cart_checkout_rounded, const Color(0xFF4CAF50)),
-                _buildEnhancedToolCard(context, 'Analytics', Icons.analytics_rounded, const Color(0xFF2196F3)),
-                _buildEnhancedToolCard(context, 'Customers', Icons.groups_rounded, const Color(0xFF9C27B0)),
-                _buildEnhancedToolCard(context, 'Inventory', Icons.warehouse_rounded, const Color(0xFFFF9800)),
-                _buildEnhancedToolCard(context, 'Live Stats', Icons.sensors_rounded, const Color(0xFF607D8B)),
-                _buildEnhancedToolCard(context, 'Support', Icons.help_center_rounded, const Color(0xFFE91E63)),
-              ]),
-            ),
-          ),
-        ],
+            ],
+          );
+        }
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {},
@@ -158,7 +184,7 @@ class AdminMainScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildInsightsCard() {
+  Widget _buildInsightsCard(String sales, int customers, int alerts) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -211,9 +237,9 @@ class AdminMainScreen extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildMiniStat('SALES', '₹ 4.2k', Colors.blue),
-                _buildMiniStat('VISITS', '1.8k', Colors.orange),
-                _buildMiniStat('ALERTS', '2', Colors.red),
+                _buildMiniStat('SALES', sales, Colors.blue),
+                _buildMiniStat('CUSTOMERS', customers.toString(), Colors.orange),
+                _buildMiniStat('ALERTS', alerts.toString(), Colors.red),
               ],
             ),
           ),
@@ -276,13 +302,9 @@ class AdminMainScreen extends StatelessWidget {
                 child: Icon(icon, color: accentColor, size: 28),
               ),
               const SizedBox(height: 12),
-              Flexible(
-                child: Text(
-                  title,
-                  style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 13, color: const Color(0xFF2C3E50)),
-                  textAlign: TextAlign.center,
-                  overflow: TextOverflow.ellipsis,
-                ),
+              Text(
+                title,
+                style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 13, color: const Color(0xFF2C3E50)),
               ),
             ],
           ),
